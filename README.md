@@ -6,3 +6,7 @@ for easy parsing and printing. Then we provide conversion functions
 between these base-10 and base-16 numbers and Coq usual numerical
 datatypes (nat, N, positive, Z, ...) and we prove the correctness
 of these conversion functions.
+
+Initial Author : Pierre Letouzey, April 2016
+
+License : LGPL (see the LICENSE file)
