@@ -8,9 +8,7 @@ Open Scope list_scope.
     decimal representation : we show an equivalence with the
     first representation with standard lists. *)
 
-Module NatProofs.
-
-Import DecNat.
+Module DeciEquiv.
 
 Fixpoint tolist (d:dec) : Deci.dec :=
   match d with
@@ -57,6 +55,21 @@ Proof.
  induction d; auto.
 Qed.
 
+Lemma to_inj (d d':dec) : tolist d = tolist d' -> d = d'.
+Proof.
+intros.
+rewrite <- (from_to d), <- (from_to d'). now f_equal.
+Qed.
+
+End DeciEquiv.
+
+Module NatProofs.
+
+Import DecNat DeciEquiv.
+
+(** Equivalence between [Deci.DecNat.dec2nat] and
+    [DeciBis.DecNat.dec2nat] *)
+
 Lemma d2n_to d acc :
  d2n d acc = Deci.DecNat.d2n (tolist d) acc.
 Proof.
@@ -68,6 +81,9 @@ Lemma dec2nat_to d : dec2nat d = Deci.DecNat.dec2nat (tolist d).
 Proof.
  unfold dec2nat. apply d2n_to.
 Qed.
+
+(** Equivalence between [Deci.DecNat.nat2dec] and
+    [DeciBis.DecNat.nat2dec] *)
 
 Lemma n2d_to n acc c :
  tolist (n2d n acc c) = Deci.DecNat.n2d n (tolist acc) c.
@@ -86,7 +102,7 @@ Proof.
  unfold nat2dec. apply n2d_to.
 Qed.
 
-(** We now obtain results about the conversions *)
+(** We now obtain autonomous results about the conversions *)
 
 Lemma nat2dec2nat (n:nat) : dec2nat (nat2dec n) = n.
 Proof.
@@ -127,3 +143,152 @@ Proof.
 Qed.
 
 End NatProofs.
+
+(** Correctness proofs for the N conversions *)
+
+Module NProofs.
+
+(** First, equivalence results... *)
+
+Import DecN DeciEquiv.
+Open Scope N.
+
+Lemma d2n_to d acc :
+ d2n d acc = Deci.DecN.d2n (tolist d) acc.
+Proof.
+ revert acc.
+ induction d; simpl; auto.
+Qed.
+
+Lemma dec2n_to d : dec2n d = Deci.DecN.dec2n (tolist d).
+Proof.
+ unfold dec2n. apply d2n_to.
+Qed.
+
+Lemma n2d_to n acc c :
+ tolist (n2d n acc c) = Deci.DecN.n2d n (tolist acc) c.
+Proof.
+ revert n acc.
+ induction c; auto.
+ - intros; destruct n; auto.
+   simpl. destruct N.pos_div_eucl.
+   rewrite IHc. f_equal.
+   destruct n0 as [ |p0]; trivial;
+    do 4 (destruct p0 as [p0|p0|]; trivial).
+ - intros; destruct n; auto. simpl.
+   destruct N.pos_div_eucl.
+   rewrite IHc. f_equal.
+   destruct n0 as [ |p0]; trivial;
+    do 4 (destruct p0 as [p0|p0|]; trivial).
+Qed.
+
+Lemma n2dec_to n :
+ tolist (n2dec n) = Deci.DecN.n2dec n.
+Proof.
+ unfold n2dec. apply n2d_to.
+Qed.
+
+(** Then autonomous statements *)
+
+Lemma n2dec2n (n:N) : dec2n (n2dec n) = n.
+Proof.
+ rewrite dec2n_to, n2dec_to.
+ apply DeciProofs.NProofs.n2dec2n.
+Qed.
+
+Lemma n2dec_inj n n' : n2dec n = n2dec n' -> n = n'.
+Proof.
+ intro EQ.
+ now rewrite <- (n2dec2n n), <- (n2dec2n n'), EQ.
+Qed.
+
+Definition Normal d := norm d = d.
+
+Lemma n2dec_norm n : Normal (n2dec n).
+Proof.
+ red. apply to_inj. rewrite norm_to.
+ rewrite !n2dec_to. apply DeciProofs.NProofs.n2dec_norm.
+Qed.
+
+Lemma dec2n2dec (d:dec) :
+  n2dec (dec2n d) = norm d.
+Proof.
+ apply to_inj. rewrite norm_to.
+ rewrite n2dec_to, dec2n_to.
+ apply DeciProofs.NProofs.dec2n2dec.
+Qed.
+
+Lemma dec2n_norm d d' : norm d = norm d' ->
+ dec2n d = dec2n d'.
+Proof.
+ intros EQ. apply n2dec_inj. now rewrite !dec2n2dec.
+Qed.
+
+Lemma dec2n_inj d d' :
+ dec2n d = dec2n d' -> norm d = norm d'.
+Proof.
+ intros. rewrite <- !dec2n2dec. now f_equal.
+Qed.
+
+Lemma dec2n_iff d d' : dec2n d = dec2n d' <-> norm d = norm d'.
+Proof.
+ split. apply dec2n_inj. apply dec2n_norm.
+Qed.
+
+End NProofs.
+
+
+(** Correctness proofs for the Positive conversions *)
+
+Module PosProofs.
+
+Import DecPos.
+
+Lemma pos2dec2pos p : dec2pos (pos2dec p) = Some p.
+Proof.
+ unfold dec2pos, pos2dec.
+ now rewrite NProofs.n2dec2n.
+Qed.
+
+Lemma dec2pos2dec d p : dec2pos d = Some p -> pos2dec p = norm d.
+Proof.
+ unfold dec2pos, pos2dec.
+ case_eq (DecN.dec2n d); try discriminate.
+ intros p' E. injection 1 as ->. rewrite <- E.
+ apply NProofs.dec2n2dec.
+Qed.
+
+Lemma dec2pos_none d : dec2pos d = None <-> norm d = Stop.
+Proof.
+ rewrite <- NProofs.dec2n2dec. unfold dec2pos.
+ split.
+ - now case_eq (DecN.dec2n d).
+ - change Stop with (DecN.n2dec 0).
+   intros E. apply NProofs.n2dec_inj in E. now rewrite E.
+Qed.
+
+End PosProofs.
+
+Module ZProofs.
+
+Import DecZ.
+Open Scope Z.
+
+Lemma z2dec2z z : 0<=z -> dec2z (z2dec z) = z.
+Proof.
+ unfold dec2z, z2dec.
+ destruct z; simpl.
+ - trivial.
+ - now rewrite NProofs.n2dec2n.
+ - now destruct 1.
+Qed.
+
+Lemma dec2z2dec d : z2dec (dec2z d) = norm d.
+Proof.
+ unfold z2dec, dec2z.
+ case_eq (DecN.dec2n d).
+ - rewrite <- NProofs.dec2n2dec. now intros ->.
+ - intros p <-. apply NProofs.dec2n2dec.
+Qed.
+
+End ZProofs.
