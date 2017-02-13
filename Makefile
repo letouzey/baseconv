@@ -25,6 +25,11 @@
 # TIMED if non empty, use the default time command as TIMECMD;
 # ZDEBUG/COQDEBUG to specify debug flags for ocamlc&ocamlopt/coqc;
 # DSTROOT to specify a prefix to install path.
+# VERBOSE to disable the short display of compilation rules.
+
+VERBOSE?=
+SHOW := $(if $(VERBOSE),@true "",@echo "")
+HIDE := $(if $(VERBOSE),,@)
 
 # Here is a hack to make $(eval $(shell works:
 define donewline
@@ -52,6 +57,8 @@ vo_to_obj = $(addsuffix .o,\
 COQLIBS?=\
   -R "." Top\
   -I "."
+COQCHKLIBS?=\
+  -R "." Top
 COQDOCLIBS?=\
   -R "." Top
 
@@ -100,6 +107,8 @@ VFILES:=Lib.v\
   DeciProofs.v\
   DeciBis.v\
   DeciBisProofs.v\
+  DeciTer.v\
+  DeciTerProofs.v\
   Hexa.v\
   HexaProofs.v\
   Tests.v
@@ -166,7 +175,7 @@ all-gal.pdf: $(VFILES)
 	$(COQDOC) -toc $(COQDOCFLAGS) -pdf -g $(COQDOCLIBS) -o $@ `$(COQDEP) -sort -suffix .v $^`
 
 validate: $(VOFILES)
-	$(COQCHK) $(COQCHKFLAGS) $(COQLIBS) $(notdir $(^:.vo=))
+	$(COQCHK) $(COQCHKFLAGS) $(COQCHKLIBS) $(notdir $(^:.vo=))
 
 beautify: $(VFILES:=.beautified)
 	for file in $^; do mv $${file%.beautified} $${file%beautified}old && mv $${file} $${file%.beautified}; done
@@ -213,6 +222,29 @@ uninstall_me.sh: Makefile
 uninstall: uninstall_me.sh
 	sh $<
 
+.merlin:
+	@echo 'FLG -rectypes' > .merlin
+	@echo "B $(COQLIB) kernel" >> .merlin
+	@echo "B $(COQLIB) lib" >> .merlin
+	@echo "B $(COQLIB) library" >> .merlin
+	@echo "B $(COQLIB) parsing" >> .merlin
+	@echo "B $(COQLIB) pretyping" >> .merlin
+	@echo "B $(COQLIB) interp" >> .merlin
+	@echo "B $(COQLIB) printing" >> .merlin
+	@echo "B $(COQLIB) intf" >> .merlin
+	@echo "B $(COQLIB) proofs" >> .merlin
+	@echo "B $(COQLIB) tactics" >> .merlin
+	@echo "B $(COQLIB) tools" >> .merlin
+	@echo "B $(COQLIB) ltacprof" >> .merlin
+	@echo "B $(COQLIB) toplevel" >> .merlin
+	@echo "B $(COQLIB) stm" >> .merlin
+	@echo "B $(COQLIB) grammar" >> .merlin
+	@echo "B $(COQLIB) config" >> .merlin
+	@echo "B $(COQLIB) ltac" >> .merlin
+	@echo "B $(COQLIB) engine" >> .merlin
+	@echo "B /home/letouzey/baseconv" >> .merlin
+	@echo "S /home/letouzey/baseconv" >> .merlin
+
 clean::
 	rm -f $(OBJFILES) $(OBJFILES:.o=.native) $(NATIVEFILES)
 	find . -name .coq-native -type d -empty -delete
@@ -246,13 +278,14 @@ Makefile: Make
 ###################
 
 $(VOFILES): %.vo: %.v
-	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
+	$(SHOW)COQC $<
+	$(HIDE)$(COQC) $(COQDEBUG) $(COQFLAGS) $<
 
 $(GLOBFILES): %.glob: %.v
-	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
+	$(COQC) $(COQDEBUG) $(COQFLAGS) $<
 
 $(VFILES:.v=.vio): %.vio: %.v
-	$(COQC) -quick $(COQDEBUG) $(COQFLAGS) $*
+	$(COQC) -quick $(COQDEBUG) $(COQFLAGS) $<
 
 $(GFILES): %.g: %.v
 	$(GALLINA) $<
@@ -270,10 +303,11 @@ $(GHTMLFILES): %.g.html: %.v %.glob
 	$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
 $(addsuffix .d,$(VFILES)): %.v.d: %.v
-	$(COQDEP) $(COQLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
+	$(SHOW)'COQDEP $<'
+	$(HIDE)$(COQDEP) $(COQLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
 
 $(addsuffix .beautified,$(VFILES)): %.v.beautified:
-	$(COQC) $(COQDEBUG) $(COQFLAGS) -beautify $*
+	$(COQC) $(COQDEBUG) $(COQFLAGS) -beautify $*.v
 
 # WARNING
 #

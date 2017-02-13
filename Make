@@ -3,6 +3,8 @@ Deci.v
 DeciProofs.v
 DeciBis.v
 DeciBisProofs.v
+DeciTer.v
+DeciTerProofs.v
 Hexa.v
 HexaProofs.v
 Tests.v
