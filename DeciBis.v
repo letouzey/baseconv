@@ -1,8 +1,6 @@
 
 Require Import Lib BinNatDef BinIntDef.
 
-Open Scope list_scope.
-
 (** Instead of list of digits as in [Deci.v], we try here
     an ad-hoc specialized list-like datatype.
 
