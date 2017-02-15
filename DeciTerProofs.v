@@ -168,6 +168,12 @@ Proof.
  rewrite to_little_dec_succ_r. now f_equal.
 Qed.
 
+Lemma to_dec_alt n :
+ to_dec n = rev (to_ldec n) Stop.
+Proof.
+ unfold to_dec. f_equal. apply to_little_dec_alt.
+Qed.
+
 Lemma to_ldec_succ n : to_ldec (S n) = Little.succ (to_ldec n).
 Proof.
  reflexivity.
@@ -237,15 +243,18 @@ Proof.
  - rewrite (of_ldec_rev d (D9 Stop)). simpl of_ldec. ring.
 Qed.
 
+Lemma of_dec_alt d : of_dec d = of_ldec (rev d Stop).
+Proof.
+ unfold of_dec.
+ rewrite of_dec_acc_spec. auto.
+Qed.
+
 (** First main bijection result *)
 
 Lemma of_to (n:nat) : of_dec (to_dec n) = n.
 Proof.
-unfold of_dec, to_dec.
-rewrite to_little_dec_alt.
-rewrite of_dec_acc_spec.
-rewrite Nat.mul_0_l, Nat.add_0_r.
-rewrite rev_rev. simpl. apply of_to_little.
+ rewrite to_dec_alt, of_dec_alt, rev_rev. simpl.
+ apply of_to_little.
 Qed.
 
 (** The other direction *)
@@ -303,15 +312,18 @@ Qed.
 
 Lemma to_of (d:dec) : to_dec (of_dec d) = norm d.
 Proof.
- unfold of_dec, to_dec.
- rewrite of_dec_acc_spec.
- rewrite Nat.mul_0_l, Nat.add_0_r.
- rewrite to_little_dec_alt.
+ rewrite to_dec_alt, of_dec_alt.
  rewrite to_of_little.
  apply lnorm_rev.
 Qed.
 
 (** Usual consequences *)
+
+Lemma to_dec_inj n n' : to_dec n = to_dec n' -> n = n'.
+Proof.
+ intro EQ.
+ now rewrite <- (of_to n), <- (of_to n'), EQ.
+Qed.
 
 Lemma to_dec_surj d : exists n, to_dec n = norm d.
 Proof.
@@ -322,6 +334,18 @@ Lemma of_dec_norm d : of_dec (norm d) = of_dec d.
 Proof.
  unfold of_dec.
  induction d; simpl; auto.
+Qed.
+
+Lemma of_inj d d' :
+ of_dec d = of_dec d' -> norm d = norm d'.
+Proof.
+ intros. rewrite <- !to_of. now f_equal.
+Qed.
+
+Lemma of_iff d d' : of_dec d = of_dec d' <-> norm d = norm d'.
+Proof.
+ split. apply of_inj. intros E. rewrite <- of_dec_norm, E.
+ apply of_dec_norm.
 Qed.
 
 End NatProofs.
@@ -632,3 +656,110 @@ Proof.
 Qed.
 
 End NProofs.
+
+
+(** Proofs about [Deci.succ] *)
+
+Import DecNat NatProofs.
+
+Lemma succ_to n :
+ succ (to_dec n) = to_dec (S n).
+Proof.
+ unfold to_dec.
+ unfold succ. f_equal. rewrite rev_rev. simpl rev.
+ rewrite !to_little_dec_alt.
+ apply to_ldec_succ.
+Qed.
+
+Lemma lsucc_lnorm d :
+ lnorm (Little.succ d) = Little.succ (lnorm d).
+Proof.
+ induction d; simpl; auto.
+ - destruct (lnorm d); simpl; auto.
+ - rewrite IHd. destruct (lnorm d); simpl; auto.
+Qed.
+
+Lemma succ_norm d :
+ norm (succ d) = succ (norm d).
+Proof.
+ unfold succ. rewrite <- !lnorm_rev, !rev_rev; simpl.
+ f_equal. apply lsucc_lnorm.
+Qed.
+
+Lemma of_succ d :
+  of_dec (succ d) = S (of_dec d).
+Proof.
+ apply to_dec_inj.
+ rewrite <- succ_to. rewrite !to_of.
+ apply succ_norm.
+Qed.
+
+Lemma succ_inj d d' :
+ succ d = succ d' -> norm d = norm d'.
+Proof.
+ intros. apply of_inj.
+ assert (E : S (of_dec d) = S (of_dec d')).
+ { rewrite <- !of_succ. now f_equal. }
+ now injection E.
+Qed.
+
+(** Proofs about [Deci.lt] *)
+
+Lemma to_lt n n' : n < n' -> lt (to_dec n) (to_dec n').
+Proof.
+ induction 1.
+ + rewrite <- succ_to. apply Succ.
+ + apply Trans with (to_dec m); trivial.
+   rewrite <- succ_to. apply Succ.
+Qed.
+
+Lemma of_lt d d' : lt d d' -> of_dec d < of_dec d'.
+Proof.
+ induction 1.
+ + rewrite of_succ. auto.
+ + omega.
+Qed.
+
+Lemma to_lt_iff n n' :  n < n' <-> lt (to_dec n) (to_dec n').
+Proof.
+ split; [apply to_lt|].
+ intros H. apply of_lt in H. now rewrite !of_to in H.
+Qed.
+
+Lemma of_lt_iff d d' :
+  of_dec d < of_dec d' <-> lt (norm d) (norm d').
+Proof.
+ rewrite to_lt_iff. now rewrite !to_of.
+Qed.
+
+Lemma lt_norm d d' : lt d d' -> lt (norm d) (norm d').
+Proof.
+ rewrite <- of_lt_iff. apply of_lt.
+Qed.
+
+Lemma lt_irrefl d d' : lt d d' -> norm d <> norm d'.
+Proof.
+ intros L E.
+ apply of_lt in L.
+ rewrite <- of_iff in E.
+ omega.
+Qed.
+
+Lemma lt_antisym d d' : lt d d' -> ~lt d' d.
+Proof.
+ intros L L'. apply of_lt in L. apply of_lt in L'. omega.
+Qed.
+
+Lemma lt_trans d1 d2 d3 : lt d1 d2 -> lt d2 d3 -> lt d1 d3.
+Proof.
+ apply Trans.
+Qed.
+
+Lemma lt_norm_total d d' :
+ { lt (norm d) (norm d') } + { norm d = norm d' } + { lt (norm d') (norm d) }.
+Proof.
+ destruct (CompareSpec2Type (Nat.compare_spec (of_dec d) (of_dec d'))).
+ - left; right. now apply of_inj.
+ - left; left. now apply of_lt_iff.
+ - right; now apply of_lt_iff.
+Qed.

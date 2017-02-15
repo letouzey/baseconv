@@ -19,40 +19,19 @@ Proof.
  now destruct d.
 Qed.
 
+(** A naive version of dec2nat, for the proofs *)
+Fixpoint of_dec (d:dec) :=
+  match d with
+  | nil => 0
+  | d :: l => of_dec l + digit2nat d * 10^length l
+  end.
+
 Lemma d2n_eqn dg d acc :
   d2n (dg::d) acc =
   d2n d (digit2nat dg + 10 * acc).
 Proof.
  rewrite <- TailNat.addmul_spec.
  reflexivity.
-Qed.
-
-Lemma n2d_eqn n acc count :
-  n2d (S n) acc (S count) =
-  n2d (S n / 10) (nat2digit (S n mod 10) :: acc) count.
-Proof.
- change (n2d (S n) acc (S count)) with
- (let (q,r) := diveucl (S n) 10 in n2d q (nat2digit r :: acc) count).
- now rewrite diveucl_spec.
-Qed.
-
-Lemma n2d_eqn' n acc count :
-  n2d n acc (S count) =
-  if n =? 0 then acc
-  else
-   n2d (n/10) (nat2digit (n mod 10) :: acc) count.
-Proof.
- destruct n. trivial. apply n2d_eqn.
-Qed.
-
-Lemma n2d_length n acc count :
-  length acc <= length (n2d n acc count).
-Proof.
- revert n acc.
- induction count; auto; destruct n; auto.
- intros.
- rewrite n2d_eqn.
- etransitivity; [| eapply IHcount]. simpl. auto.
 Qed.
 
 Lemma d2n_add d n p :
@@ -71,6 +50,31 @@ Qed.
 Lemma d2n_alt d acc : d2n d acc = dec2nat d + acc * 10^length d.
 Proof.
  apply (d2n_add d 0 acc).
+Qed.
+
+Lemma dec2nat_alt d : dec2nat d = of_dec d.
+Proof.
+ induction d; simpl; auto.
+ unfold dec2nat. simpl.
+ rewrite <- IHd. unfold dec2nat. now rewrite <- d2n_add.
+Qed.
+
+Lemma n2d_eqn n acc count :
+  n2d (S n) acc (S count) =
+  n2d (S n / 10) (nat2digit (S n mod 10) :: acc) count.
+Proof.
+ change (n2d (S n) acc (S count)) with
+ (let (q,r) := diveucl (S n) 10 in n2d q (nat2digit r :: acc) count).
+ now rewrite diveucl_spec.
+Qed.
+
+Lemma n2d_eqn' n acc count :
+  n2d n acc (S count) =
+  if n =? 0 then acc
+  else
+   n2d (n/10) (nat2digit (n mod 10) :: acc) count.
+Proof.
+ destruct n. trivial. apply n2d_eqn.
 Qed.
 
 Lemma n2d_anycount count count' n acc :
@@ -123,67 +127,33 @@ Proof.
  now apply (n2d_app n nil).
 Qed.
 
-(*
-<n0><... n ...>|d0|
-<n0>|      d      |
-*)
-
-Lemma n2d2n count n n0 n1 (d0 d : dec) :
- n <= count ->
- d = n2d n d0 count ->
- n1 = n0 * 10^(length d - length d0) ->
- d2n d n0 =
- d2n d0 (n1 + n).
+Lemma of_dec_app d d' :
+  of_dec (d ++ d') =
+  of_dec d * 10^length d' + of_dec d'.
 Proof.
- revert n n0 n1 d0 d.
- induction count.
- - inversion 1. simpl. intros; subst. f_equal.
-   rewrite Nat.sub_diag. simpl. omega.
- - intros n n0 n1 d0 d LE D N1.
-   destruct n.
-   + simpl in *. subst. f_equal.
-     rewrite Nat.sub_diag. simpl. omega.
-   + rewrite n2d_eqn in D.
-     remember (S n) as Sn.
-     destruct (Nat.le_gt_cases 10 Sn).
-     * assert (Sn / 10 <= count).
-       { apply Nat.div_le_upper_bound; omega. }
-       remember (nat2digit (Sn mod 10)) as dg.
-       specialize (IHcount (Sn / 10) n0
-                           (n0 * 10 ^ (length d - S (length d0)))
-                           (dg::d0) d H0 D eq_refl).
-       rewrite d2n_eqn in IHcount.
-       rewrite IHcount.
-       f_equal.
-       subst n1.
-       rewrite Nat.mul_add_distr_l.
-       rewrite Nat.mul_shuffle3.
-       assert (LE' := n2d_length (Sn / 10) (dg :: d0) count).
-       rewrite <- D in LE'. simpl in LE'.
-       rewrite <- Nat.pow_succ_r; try omega.
-       rewrite Nat.add_shuffle3.
-       f_equal.
-       { f_equal; f_equal. omega. }
-       { subst dg. rewrite nat2digit2nat; auto using Nat.mod_upper_bound.
-         rewrite Nat.add_comm. symmetry. apply Nat.div_mod; auto. }
-     * rewrite Nat.div_small in D by auto.
-       rewrite Nat.mod_small in D by auto.
-       rewrite n2d_mincount in D by omega. simpl in D.
-       subst d.
-       rewrite d2n_eqn. f_equal.
-       rewrite nat2digit2nat by auto.
-       rewrite Nat.add_comm. f_equal.
-       subst n1. simpl length.
-       replace (S (length d0) - length d0) with 1 by omega.
-       simpl; omega.
+ induction d; simpl; auto.
+ rewrite IHd. rewrite List.app_length, Nat.pow_add_r.
+ ring.
 Qed.
 
-Lemma nat2dec2nat (n:nat) : dec2nat (nat2dec n) = n.
+Lemma nat2dec2nat n :
+ dec2nat (nat2dec n) = n.
 Proof.
- unfold dec2nat.
- remember (nat2dec n) as d.
- change n with (d2n nil (0+n)).
- apply (n2d2n n); auto.
+ rewrite dec2nat_alt.
+ induction n using lt_wf_ind.
+ unfold nat2dec.
+ destruct n.
+ - simpl; auto.
+ - rewrite n2d_eqn.
+   rewrite n2d_alt by (apply Nat.lt_succ_r, Nat.div_lt; omega).
+   rewrite of_dec_app.
+   simpl length.
+   rewrite H by (apply Nat.div_lt; omega).
+   unfold of_dec.
+   rewrite nat2digit2nat by (apply Nat.mod_upper_bound; auto).
+   simpl length.
+   rewrite Nat.pow_1_r, Nat.pow_0_r, Nat.add_0_l, Nat.mul_1_r.
+   rewrite Nat.mul_comm. symmetry. now apply Nat.div_mod.
 Qed.
 
 Lemma nat2dec_inj n n' : nat2dec n = nat2dec n' -> n = n'.
@@ -556,3 +526,176 @@ Qed.
 
 End ZProofs.
 
+(** Proofs concerning [Deci.succ] *)
+
+Import DecNat NatProofs.
+
+Lemma bounded_succ_length d :
+  length (carry_proj (bounded_succ d)) = length d.
+Proof.
+ induction d; simpl; auto.
+ destruct (bounded_succ d); simpl in *; auto.
+ destruct a; simpl; congruence.
+Qed.
+
+Lemma bounded_succ_spec d :
+ match bounded_succ d with
+ | Carry d' => S (dec2nat d) = 10^length d /\ dec2nat d' = 0
+ | NoCarry d' => S (dec2nat d) < 10^length d /\ dec2nat d' = S (dec2nat d)
+ end.
+Proof.
+ induction d.
+ - simpl; auto.
+ - simpl bounded_succ.
+   assert (L:=bounded_succ_length d).
+   destruct bounded_succ; simpl in L.
+   + destruct a;
+     rewrite !dec2nat_alt in *; simpl of_dec; simpl length;
+     rewrite Nat.pow_succ_r', !Nat.add_0_r, <- ?Nat.add_succ_l, ?L;
+     destruct IHd as (->,->); split; auto;
+     generalize (Nat.pow_nonzero 10 (length d)); omega.
+   + rewrite !dec2nat_alt in *; simpl of_dec; simpl length.
+     rewrite L.
+     destruct IHd as (IH,->). split; auto.
+     rewrite Nat.pow_succ_r'.
+     rewrite <- Nat.add_succ_l.
+     assert (digit2nat a * 10 ^ length d <= 9 * 10 ^ length d).
+     { apply Nat.mul_le_mono_nonneg_r; auto with arith.
+       destruct a; simpl; auto with arith. }
+     omega.
+Qed.
+
+Lemma norm_length d : length (norm d) <= length d.
+Proof.
+ induction d; simpl; auto.
+ destruct a; auto.
+Qed.
+
+Lemma bounded_succ_norm d :
+ match bounded_succ d with
+ | Carry d' => Normal d
+ | NoCarry d' => Normal d -> Normal d'
+ end.
+Proof.
+ destruct d as [|a d']; simpl; auto. reflexivity.
+ destruct (bounded_succ d'); destruct a; unfold Normal; simpl; auto.
+ intros.
+ generalize (norm_length d'). rewrite H. simpl. omega.
+Qed.
+
+Lemma succ_norm d : norm (succ d) = succ (norm d).
+Proof.
+ induction d as [|a d IH].
+ - simpl; auto.
+ - unfold succ.
+   assert (L := bounded_succ_length (a::d)).
+   assert (H := bounded_succ_spec (a::d)).
+   assert (N := bounded_succ_norm (a::d)).
+   destruct (bounded_succ (a::d)) eqn:E.
+   + now rewrite N, E.
+   + simpl in E, L.
+     unfold succ in IH.
+     destruct (bounded_succ d) eqn:E'.
+     * destruct a; simpl; try discriminate;
+       rewrite ?E'; now injection E as <-.
+     * injection E as <-.
+       destruct a; simpl; auto; now rewrite E'.
+Qed.
+
+Lemma succ_to n : succ (nat2dec n) = nat2dec (S n).
+Proof.
+ unfold succ.
+ assert (L := bounded_succ_length (nat2dec n)).
+ assert (H := bounded_succ_spec (nat2dec n)).
+ assert (N := bounded_succ_norm (nat2dec n)).
+ destruct (bounded_succ (nat2dec n)); simpl in *.
+ - destruct H as (H,H').
+   rewrite nat2dec2nat in H.
+   change (D1 :: l) with (norm (D1 :: l)).
+   rewrite <- nat2dec_norm.
+   apply dec2nat_inj.
+   rewrite nat2dec2nat. rewrite H.
+   rewrite dec2nat_alt in *. simpl. rewrite H', L. omega.
+ - rewrite nat2dec2nat in H.
+   rewrite <- (N (nat2dec_norm n)), <- (nat2dec_norm (S n)).
+   apply dec2nat_inj.
+   now rewrite nat2dec2nat.
+Qed.
+
+Lemma of_succ d : dec2nat (succ d) = S (dec2nat d).
+Proof.
+ apply nat2dec_inj.
+ rewrite <- succ_to.
+ rewrite !dec2nat2dec.
+ apply succ_norm.
+Qed.
+
+Lemma succ_inj d d' :
+ succ d = succ d' -> norm d = norm d'.
+Proof.
+ intros. apply dec2nat_inj.
+ assert (E : S (dec2nat d) = S (dec2nat d')).
+ { rewrite <- !of_succ. now f_equal. }
+ now injection E.
+Qed.
+
+(** Proofs concerning [Deci.succ] *)
+
+Lemma to_lt n n' : n < n' -> lt (nat2dec n) (nat2dec n').
+Proof.
+ induction 1.
+ + rewrite <- succ_to. apply Succ.
+ + apply Trans with (nat2dec m); trivial.
+   rewrite <- succ_to. apply Succ.
+Qed.
+
+Lemma of_lt d d' : lt d d' -> dec2nat d < dec2nat d'.
+Proof.
+ induction 1.
+ + rewrite of_succ. auto.
+ + omega.
+Qed.
+
+Lemma to_lt_iff n n' :  n < n' <-> lt (nat2dec n) (nat2dec n').
+Proof.
+ split; [apply to_lt|].
+ intros H. apply of_lt in H. now rewrite !nat2dec2nat in H.
+Qed.
+
+Lemma of_lt_iff d d' :
+  dec2nat d < dec2nat d' <-> lt (norm d) (norm d').
+Proof.
+ rewrite to_lt_iff. now rewrite !dec2nat2dec.
+Qed.
+
+Lemma lt_norm d d' : lt d d' -> lt (norm d) (norm d').
+Proof.
+ rewrite <- of_lt_iff. apply of_lt.
+Qed.
+
+Lemma lt_irrefl d d' : lt d d' -> norm d <> norm d'.
+Proof.
+ intros L E.
+ apply of_lt in L.
+ apply dec2nat_norm in E.
+ omega.
+Qed.
+
+Lemma lt_antisym d d' : lt d d' -> ~lt d' d.
+Proof.
+ intros L L'. apply of_lt in L. apply of_lt in L'. omega.
+Qed.
+
+Lemma lt_trans d1 d2 d3 : lt d1 d2 -> lt d2 d3 -> lt d1 d3.
+Proof.
+ apply Trans.
+Qed.
+
+Lemma lt_norm_total d d' :
+ { lt (norm d) (norm d') } + { norm d = norm d' } + { lt (norm d') (norm d) }.
+Proof.
+ destruct (CompareSpec2Type (Nat.compare_spec (dec2nat d) (dec2nat d'))).
+ - left; right. now apply dec2nat_inj.
+ - left; left. now apply of_lt_iff.
+ - right; now apply of_lt_iff.
+Qed.

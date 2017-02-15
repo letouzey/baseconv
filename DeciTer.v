@@ -222,3 +222,16 @@ Definition z2dec z :=
  end.
 
 End DecZ.
+
+
+(** A successor on decimal. Not really mandatory, just to state
+    that our conversions preserve the order of numbers *)
+
+Definition succ d := rev (Little.succ (rev d Stop)) Stop.
+
+(** The strict order on decimal numbers is the transitive
+    closure of the successor *)
+
+Inductive lt : dec -> dec -> Prop :=
+ | Succ x : lt x (succ x)
+ | Trans x y z : lt x y -> lt y z -> lt x z.

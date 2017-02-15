@@ -162,3 +162,42 @@ Definition z2dec z :=
  end.
 
 End DecZ.
+
+
+(** A successor on decimal. Not really mandatory, just to state
+    that our conversions preserve the order of numbers *)
+
+Fixpoint bounded_succ l :=
+ match l with
+ | nil => Carry nil
+ | d::l =>
+   match bounded_succ l with
+   | NoCarry l' => NoCarry (d::l')
+   | Carry l' =>
+     match d with
+     | D0 => NoCarry (D1::l')
+     | D1 => NoCarry (D2::l')
+     | D2 => NoCarry (D3::l')
+     | D3 => NoCarry (D4::l')
+     | D4 => NoCarry (D5::l')
+     | D5 => NoCarry (D6::l')
+     | D6 => NoCarry (D7::l')
+     | D7 => NoCarry (D8::l')
+     | D8 => NoCarry (D9::l')
+     | D9 => Carry (D0::l')
+     end
+   end
+ end.
+
+Definition succ l :=
+ match bounded_succ l with
+ | NoCarry l' => l'
+ | Carry l' => D1::l'
+ end.
+
+(** The strict order on decimal numbers is the transitive
+    closure of the successor *)
+
+Inductive lt : dec -> dec -> Prop :=
+ | Succ x : lt x (succ x)
+ | Trans x y z : lt x y -> lt y z -> lt x z.

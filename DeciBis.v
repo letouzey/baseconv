@@ -168,3 +168,65 @@ Definition z2dec z :=
  end.
 
 End DecZ.
+
+
+(** A successor on decimal. Not really mandatory, just to state
+    that our conversions preserve the order of numbers *)
+
+Fixpoint bounded_succ l :=
+ match l with
+ | Stop => Carry Stop
+ | D0 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D0 d')
+           | Carry d' => NoCarry (D1 d')
+           end
+ | D1 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D1 d')
+           | Carry d' => NoCarry (D2 d')
+           end
+ | D2 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D2 d')
+           | Carry d' => NoCarry (D3 d')
+           end
+ | D3 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D3 d')
+           | Carry d' => NoCarry (D4 d')
+           end
+ | D4 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D4 d')
+           | Carry d' => NoCarry (D5 d')
+           end
+ | D5 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D5 d')
+           | Carry d' => NoCarry (D6 d')
+           end
+ | D6 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D6 d')
+           | Carry d' => NoCarry (D7 d')
+           end
+ | D7 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D7 d')
+           | Carry d' => NoCarry (D8 d')
+           end
+ | D8 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D8 d')
+           | Carry d' => NoCarry (D9 d')
+           end
+ | D9 d => match bounded_succ d with
+           | NoCarry d' => NoCarry (D9 d')
+           | Carry d' => Carry (D0 d')
+           end
+ end.
+
+Definition succ l :=
+ match bounded_succ l with
+ | NoCarry l' => l'
+ | Carry l' => D1 l'
+ end.
+
+(** The strict order on decimal numbers is the transitive
+    closure of the successor *)
+
+Inductive lt : dec -> dec -> Prop :=
+ | Succ x : lt x (succ x)
+ | Trans x y z : lt x y -> lt y z -> lt x z.

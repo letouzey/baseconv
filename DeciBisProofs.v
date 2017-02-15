@@ -292,3 +292,55 @@ Proof.
 Qed.
 
 End ZProofs.
+
+(** Proofs concerning [DeciBis.succ] *)
+
+Import DeciEquiv.
+
+Lemma bounded_succ_equiv d :
+  match DeciBis.bounded_succ d, Deci.bounded_succ (tolist d) with
+  | Carry d, Carry l => l = tolist d
+  | NoCarry d, NoCarry l => l = tolist d
+  | _, _=> False
+  end.
+Proof.
+ induction d; simpl; auto;
+ destruct bounded_succ, Deci.bounded_succ; simpl; subst; intuition.
+Qed.
+
+Lemma succ_equiv d :
+  tolist (DeciBis.succ d) = Deci.succ (tolist d).
+Proof.
+ unfold succ, Deci.succ.
+ generalize (bounded_succ_equiv d).
+ destruct bounded_succ, Deci.bounded_succ; simpl; intuition.
+ now subst.
+Qed.
+
+Lemma succ_equiv' d :
+  fromlist (Deci.succ d) = DeciBis.succ (fromlist d).
+Proof.
+ rewrite <- (to_from d) at 1.
+ rewrite <- succ_equiv.
+ apply from_to.
+Qed.
+
+Lemma lt_equiv d d' :
+ DeciBis.lt d d' <-> Deci.lt (tolist d) (tolist d').
+Proof.
+ split.
+ - induction 1.
+   + rewrite succ_equiv. apply Deci.Succ.
+   + eapply Deci.Trans; eauto.
+ - rewrite <- (from_to d) at 2.
+   rewrite <- (from_to d') at 2.
+   induction 1.
+   + rewrite succ_equiv'. apply DeciBis.Succ.
+   + eapply DeciBis.Trans; eauto.
+Qed.
+
+Lemma lt_equiv' d d' :
+ Deci.lt d d' <-> DeciBis.lt (fromlist d) (fromlist d').
+Proof.
+ now rewrite lt_equiv, !to_from.
+Qed.

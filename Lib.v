@@ -57,3 +57,19 @@ Lemma diveucl_spec x y : diveucl x y = (Nat.div x y, Nat.modulo x y).
 Proof.
  destruct y; simpl; trivial. now destruct Nat.divmod.
 Qed.
+
+(** A datatype for encoding carries.
+    This is isomorphic to [bool*A], but with nicer names *)
+
+Inductive carry (A:Type) :=
+ | Carry : A -> carry A
+ | NoCarry : A -> carry A.
+
+Arguments Carry {A}.
+Arguments NoCarry {A}.
+
+Definition carry_proj {A} (c : carry A) :=
+  match c with
+  | Carry a => a
+  | NoCarry a => a
+  end.
