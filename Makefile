@@ -41,7 +41,7 @@ $(call includecmdwithout@,$(COQBIN)coqtop -config)
 
 TIMED?=
 TIMECMD?=
-STDTIME=/usr/bin/time -f "$* (user: %U mem: %M ko)"
+STDTIME?=/usr/bin/time -f "$* (user: %U mem: %M ko)"
 TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
 vo_to_obj = $(addsuffix .o,\
@@ -111,6 +111,7 @@ VFILES:=Lib.v\
   DeciTerProofs.v\
   Hexa.v\
   HexaProofs.v\
+  DeciString.v\
   Tests.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
@@ -224,24 +225,25 @@ uninstall: uninstall_me.sh
 
 .merlin:
 	@echo 'FLG -rectypes' > .merlin
-	@echo "B $(COQLIB) kernel" >> .merlin
-	@echo "B $(COQLIB) lib" >> .merlin
-	@echo "B $(COQLIB) library" >> .merlin
-	@echo "B $(COQLIB) parsing" >> .merlin
-	@echo "B $(COQLIB) pretyping" >> .merlin
-	@echo "B $(COQLIB) interp" >> .merlin
-	@echo "B $(COQLIB) printing" >> .merlin
-	@echo "B $(COQLIB) intf" >> .merlin
-	@echo "B $(COQLIB) proofs" >> .merlin
-	@echo "B $(COQLIB) tactics" >> .merlin
-	@echo "B $(COQLIB) tools" >> .merlin
-	@echo "B $(COQLIB) ltacprof" >> .merlin
-	@echo "B $(COQLIB) toplevel" >> .merlin
-	@echo "B $(COQLIB) stm" >> .merlin
-	@echo "B $(COQLIB) grammar" >> .merlin
-	@echo "B $(COQLIB) config" >> .merlin
-	@echo "B $(COQLIB) ltac" >> .merlin
-	@echo "B $(COQLIB) engine" >> .merlin
+	@echo "B $(COQLIB)kernel" >> .merlin
+	@echo "B $(COQLIB)lib" >> .merlin
+	@echo "B $(COQLIB)library" >> .merlin
+	@echo "B $(COQLIB)parsing" >> .merlin
+	@echo "B $(COQLIB)pretyping" >> .merlin
+	@echo "B $(COQLIB)interp" >> .merlin
+	@echo "B $(COQLIB)printing" >> .merlin
+	@echo "B $(COQLIB)intf" >> .merlin
+	@echo "B $(COQLIB)proofs" >> .merlin
+	@echo "B $(COQLIB)tactics" >> .merlin
+	@echo "B $(COQLIB)tools" >> .merlin
+	@echo "B $(COQLIB)ltacprof" >> .merlin
+	@echo "B $(COQLIB)vernac" >> .merlin
+	@echo "B $(COQLIB)stm" >> .merlin
+	@echo "B $(COQLIB)toplevel" >> .merlin
+	@echo "B $(COQLIB)grammar" >> .merlin
+	@echo "B $(COQLIB)config" >> .merlin
+	@echo "B $(COQLIB)ltac" >> .merlin
+	@echo "B $(COQLIB)engine" >> .merlin
 	@echo "B /home/letouzey/baseconv" >> .merlin
 	@echo "S /home/letouzey/baseconv" >> .merlin
 
@@ -253,7 +255,7 @@ clean::
 	- rm -rf html mlihtml uninstall_me.sh
 
 cleanall:: clean
-	rm -f $(patsubst %.v,.%.aux,$(VFILES))
+	rm -f $(foreach f,$(VFILES:.v=),$(dir $(f)).$(notdir $(f)).aux)
 
 archclean::
 	rm -f *.cmx *.o

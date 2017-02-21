@@ -7,4 +7,5 @@ DeciTer.v
 DeciTerProofs.v
 Hexa.v
 HexaProofs.v
+DeciString.v
 Tests.v
