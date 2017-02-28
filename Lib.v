@@ -73,3 +73,86 @@ Definition carry_proj {A} (c : carry A) :=
   | Carry a => a
   | NoCarry a => a
   end.
+
+
+
+(** Tail recursive operations on positive *)
+
+Require Import BinPosDef.
+Local Open Scope positive.
+
+Module TailPos.
+
+(** NB: even if [a] below has type [positive], its role differ deeply
+    from the other (little-endian) numbers around. It is an accumulator
+    of binary digits waiting to be "zipped" back on the result
+    (via function [rev]).
+*)
+
+Fixpoint rev a p :=
+  match a with
+    | 1 => p
+    | a~1 => rev a (p~1)
+    | a~0 => rev a (p~0)
+  end.
+
+Fixpoint succ p a :=
+  match p with
+    | p~1 => succ p (a~0)
+    | p~0 => rev a (p~1)
+    | 1 => rev a (1~0)
+  end.
+
+Fixpoint add_tail p q a :=
+  match p, q with
+    | p~1, q~1 => add_carry p q (a~0)
+    | p~1, q~0 => add_tail p q (a~1)
+    | p~0, q~1 => add_tail p q (a~1)
+    | p~0, q~0 => add_tail p q (a~0)
+    | p, 1 => succ p a
+    | 1, q => succ q a
+  end
+with add_carry p q a :=
+  match p, q with
+    | p~1, q~1 => add_carry p q (a~1)
+    | p~1, q~0 => add_carry p q (a~0)
+    | p~0, q~1 => add_carry p q (a~0)
+    | p~0, q~0 => add_tail p q (a~1)
+    | p~1, 1 => succ p (a~1)
+    | p~0, 1 => succ p (a~0)
+    | 1, q~1 => succ q (a~1)
+    | 1, q~0 => succ q (a~0)
+    | 1, 1 => rev a 1~1
+  end.
+
+Definition add p q := add_tail p q 1.
+
+Definition tenfold p := (add p (p~0~0))~0.
+
+Lemma succ_alt p q : succ p q = rev q (Pos.succ p).
+Proof.
+ revert q.
+ induction p; simpl; auto.
+ intros. now rewrite IHp.
+Qed.
+
+Lemma add_alt p q a :
+  add_tail p q a = rev a (Pos.add p q) /\
+  add_carry p q a = rev a (Pos.add_carry p q).
+Proof.
+ revert q a.
+ induction p; destruct q; simpl; auto; intros;
+  try destruct (IHp q (a~0)), (IHp q (a~1)); auto; rewrite !succ_alt; auto.
+Qed.
+
+Lemma add_equiv p q : add p q = Pos.add p q.
+Proof.
+ apply add_alt.
+Qed.
+
+Lemma tenfold_ok p : tenfold p = Pos.mul 10 p.
+Proof.
+ unfold tenfold. now rewrite add_equiv.
+Qed.
+
+End TailPos.
